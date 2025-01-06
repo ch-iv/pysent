@@ -30,6 +30,7 @@ class Presentation:
     def __init__(self) -> None:
         self._slides: List[Slide] = []
         self._current_slide: int = 0
+        self._last_modified: float = 0
 
     def add_slide(self, slide: Slide) -> None:
         self._slides.append(slide)
@@ -37,11 +38,23 @@ class Presentation:
     def get_current_slide(self) -> Slide:
         return self._slides[self._current_slide]
 
+    def set_current_slide_n(self, current_slide: int) -> None:
+        self._current_slide = max(0, min(current_slide, len(self._slides) - 1))
+
+    def get_current_slide_n(self) -> int:
+        return self._current_slide
+
     def next(self) -> None:
         self._current_slide = min(self._current_slide + 1, len(self._slides) - 1)
 
     def prev(self) -> None:
         self._current_slide = max(self._current_slide - 1, 0)
+
+    def set_last_modified(self, last_modified: float) -> None:
+        self._last_modified = last_modified
+
+    def get_last_modified(self) -> float:
+        return self._last_modified
 
 
 def parse(filename: Path) -> Presentation:
@@ -49,6 +62,7 @@ def parse(filename: Path) -> Presentation:
         paragraphs = f.read().split("\n\n")
 
     pres = Presentation()
+    pres.set_last_modified(filename.lstat().st_mtime)
 
     for par in paragraphs:
         slide = Slide()
@@ -185,6 +199,12 @@ def main(presentation_path: Path) -> None:
                     pres.prev()
                 elif event.key == pygame.K_q:
                     running = False
+
+        if presentation_path.lstat().st_mtime != pres.get_last_modified():
+            current_slide = pres.get_current_slide_n()
+            pres = parse(presentation_path)
+            pres.set_current_slide_n(current_slide)
+            print("Reloaded presentation")
 
         content = pres.get_current_slide().get_content()
         if isinstance(content, list):
